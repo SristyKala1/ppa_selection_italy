@@ -1,0 +1,13 @@
+pandas
+numpy
+scipy
+xarray
+netCDF4
+pvlib
+pyyaml
+jupyter
+ipykernel
+matplotlib
+plotly
+streamlit
+pyomo

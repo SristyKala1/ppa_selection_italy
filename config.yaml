@@ -1,0 +1,7 @@
+weather:
+  start_year: 1991
+  end_year: 2023
+
+site:
+  latitude: 45.4642
+  longitude: 9.1900
