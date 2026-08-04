@@ -1,28 +1,24 @@
 """
 download_era5.py
 
-Downloads hourly ERA5 weather data from the Copernicus Climate Data Store.
+Downloads ERA5 hourly weather timeseries (1991-2023) from the Copernicus
+Climate Data Store, using the point-location Timeseries API.
 
-Current version:
-- Downloads one year only
-- Reads coordinates from config.yaml
-- Saves raw NetCDF files
-
-Later versions will:
-- Loop over all 33 years
-- Skip already-downloaded files
-- Add retry/error handling
+One request per city covers the full 33-year range. Responses always come
+back as a zip (confirmed via test request, 2026-08-04 — the API ignores
+download_format and defaults to zip regardless), so each city's download
+is unzipped and the extracted file renamed to the canonical path.
 """
 
 from pathlib import Path
+import tempfile
+import time
+import zipfile
 
 import cdsapi
 import yaml
 
-
-# --------------------------------------------------
 # Check CDS credentials
-# --------------------------------------------------
 
 cds_key = Path.home() / ".cdsapirc"
 
@@ -33,100 +29,106 @@ if not cds_key.exists():
     )
 
 
-# --------------------------------------------------
+
 # Read configuration
-# --------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 config_path = PROJECT_ROOT / "config.yaml"
 
 with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
-LATITUDE = config["site"]["latitude"]
-LONGITUDE = config["site"]["longitude"]
+ZONES = config["zones"]
+START_YEAR = config["weather"]["start_year"]
+END_YEAR = config["weather"]["end_year"]
+DATE_RANGE = f"{START_YEAR}-01-01/{END_YEAR}-12-31"
 
 
-# --------------------------------------------------
 # Output folder
-# --------------------------------------------------
 
 RAW_WEATHER_DIR = PROJECT_ROOT / "data" / "raw" / "weather"
-
 RAW_WEATHER_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# --------------------------------------------------
-# Download function
-# --------------------------------------------------
+# Download function (single city, with retry + unzip)
 
-def download_era5(year, month):
+VARIABLES = [
+    "2m_temperature",
+    "surface_solar_radiation_downwards",
+    "total_sky_direct_solar_radiation_at_surface",
+    "surface_pressure",
+    "100m_u_component_of_wind",
+    "100m_v_component_of_wind",
+]
 
-    print(f"Downloading {year}-{month:02d}...")
-
-    client = cdsapi.Client()
-
-    output_file = RAW_WEATHER_DIR / f"weather_{year}_{month:02d}.nc"
-
-    client.retrieve(
-        "reanalysis-era5-single-levels",
-        {
-            "product_type": "reanalysis",
-
-            "variable": [
-                "2m_temperature",
-                "surface_solar_radiation_downwards",
-                "total_sky_direct_solar_radiation_at_surface",
-                "surface_pressure",
-                "100m_u_component_of_wind",
-                "100m_v_component_of_wind",
-            ],
-
-            "year": str(year),
-
-            "month": [f"{month:02d}"],
-
-            "day": [
-                "01","02","03","04","05","06","07","08","09","10",
-                "11","12","13","14","15","16","17","18","19","20",
-                "21","22","23","24","25","26","27","28","29","30","31"
-            ],
-
-            "time": [
-                "00:00","01:00","02:00","03:00",
-                "04:00","05:00","06:00","07:00",
-                "08:00","09:00","10:00","11:00",
-                "12:00","13:00","14:00","15:00",
-                "16:00","17:00","18:00","19:00",
-                "20:00","21:00","22:00","23:00"
-            ],
-
-            # ERA5 expects: North, West, South, East
-            "area": [
-                LATITUDE + 0.25,
-                LONGITUDE - 0.25,
-                LATITUDE - 0.25,
-                LONGITUDE + 0.25,
-            ],
-
-            "data_format": "netcdf",
-            "download_format": "unarchived",
-        },
-
-        str(output_file),
-
-    )
-
-    print(f"\nFinished downloading {year}")
-    print(output_file)
+MAX_RETRIES = 3
+RETRY_PAUSE_SECONDS = 30
 
 
-# --------------------------------------------------
+def download_city(client, zone_name, city_name, lat, lon):
+    final_output = RAW_WEATHER_DIR / f"era5_{zone_name}_{city_name}.nc"
+
+    if final_output.exists():
+        print(f"  Skipping {zone_name}/{city_name} (already downloaded)")
+        return True
+
+    zip_path = RAW_WEATHER_DIR / f"_tmp_{zone_name}_{city_name}.zip"
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            client.retrieve(
+                "reanalysis-era5-single-levels-timeseries",
+                {
+                    "variable": VARIABLES,
+                    "location": {"latitude": lat, "longitude": lon},
+                    "date": [DATE_RANGE],
+                    "data_format": "netcdf",
+                },
+                str(zip_path),
+            )
+
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                with zipfile.ZipFile(zip_path) as zf:
+                    zf.extractall(tmp_dir)
+
+                extracted_nc = next(Path(tmp_dir).glob("*.nc"))
+                extracted_nc.rename(final_output)
+
+            zip_path.unlink()
+            return True
+
+        except Exception as exc:
+            print(f"  Attempt {attempt}/{MAX_RETRIES} failed for "
+                  f"{zone_name}/{city_name}: {exc}")
+            zip_path.unlink(missing_ok=True)
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_PAUSE_SECONDS)
+
+    print(f"  FAILED: {zone_name}/{city_name} after {MAX_RETRIES} attempts")
+    return False
+
+
 # Main
-# --------------------------------------------------
 
 if __name__ == "__main__":
 
-    for month in range(1, 13):
-        download_era5(1991, month)
+    client = cdsapi.Client()
+
+    total_cities = sum(len(z["cities"]) for z in ZONES.values())
+    counter = 0
+    failures = []
+
+    for zone_name, zone_data in ZONES.items():
+        for city in zone_data["cities"]:
+            counter += 1
+            print(f"[{counter}/{total_cities}] {zone_name}/{city['name']}")
+
+            success = download_city(
+                client, zone_name, city["name"], city["lat"], city["lon"]
+            )
+            if not success:
+                failures.append(f"{zone_name}/{city['name']}")
+
+    print(f"\nDone. {total_cities - len(failures)}/{total_cities} succeeded.")
+    if failures:
+        print("Failed cities:", ", ".join(failures))

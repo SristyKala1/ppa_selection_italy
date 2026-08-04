@@ -17,17 +17,87 @@ zones:
       - name: bologna
         lat: 44.4949
         lon: 11.3426
+  centro_nord:
+    cities:
+      - name: florence
+        lat: 43.77
+        lon: 11.25
+      - name: pisa
+        lat: 43.72
+        lon: 10.40
+      - name: ancona
+        lat: 43.61
+        lon: 13.52
+      - name: pesaro
+        lat: 43.91
+        lon: 12.91
+  centro_sud:
+    cities:
+      - name: rome
+        lat: 41.90
+        lon: 12.50
+      - name: pescara
+        lat: 42.46
+        lon: 14.21
+      - name: naples
+        lat: 40.85
+        lon: 14.27
+      - name: perugia
+        lat: 43.11
+        lon: 12.39
   sud:
     cities:
-      - name: napoli
-        lat: 40.8518
-        lon: 14.2681
-      - name: bari
-        lat: 41.1171
-        lon: 16.8719
-      - name: potenza
-        lat: 40.6420
-        lon: 15.8086
       - name: campobasso
         lat: 41.5603
         lon: 14.6684
+      - name: bari
+        lat: 41.1171
+        lon: 16.8719
+      - name: lecce
+        lat: 40.35
+        lon: 18.17
+      - name: potenza
+        lat: 40.6420
+        lon: 15.8086
+  calabria:
+    cities:
+      - name: reggio_calabria
+        lat: 38.11
+        lon: 15.65
+      - name: catanzaro
+        lat: 38.91
+        lon: 16.60
+      - name: cosenza
+        lat: 39.30
+        lon: 16.25
+      - name: crotone
+        lat: 39.08
+        lon: 17.13
+  sicilia:
+    cities:
+      - name: palermo
+        lat: 38.12
+        lon: 13.36
+      - name: catania
+        lat: 37.50
+        lon: 15.09
+      - name: ragusa
+        lat: 36.93
+        lon: 14.73
+      - name: trapani
+        lat: 38.02
+        lon: 12.53
+  sardegna:
+    cities:
+      - name: cagliari
+        lat: 39.22
+        lon: 9.12
+      - name: sassari
+        lat: 40.73
+        lon: 8.56
+      - name: nuoro
+        lat: 40.32
+        lon: 9.33
+      - name: oristano
+        lat: 39.90
+        lon: 8.59
