@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     client = cdsapi.Client()
 
-    total_cities = sum(len(z["cities"]) for z in ZONES.values())
+    total_cities = sum(len(z["cities"]) + 1 for z in ZONES.values())
     counter = 0
     failures = []
 
@@ -128,6 +128,17 @@ if __name__ == "__main__":
             )
             if not success:
                 failures.append(f"{zone_name}/{city['name']}")
+
+        wind_site = zone_data["wind_site"]
+        counter += 1
+        print(f"[{counter}/{total_cities}] {zone_name}/wind_{wind_site['name']}")
+
+        success = download_city(
+            client, zone_name, f"wind_{wind_site['name']}",
+            wind_site["lat"], wind_site["lon"],
+        )
+        if not success:
+            failures.append(f"{zone_name}/wind_{wind_site['name']}")
 
     print(f"\nDone. {total_cities - len(failures)}/{total_cities} succeeded.")
     if failures:
