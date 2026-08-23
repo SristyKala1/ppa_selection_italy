@@ -17,6 +17,10 @@ zones:
       - name: bologna
         lat: 44.4949
         lon: 11.3426
+    wind_site:
+      name: cairo_montenotte
+      lat: 44.3959
+      lon: 8.3995
   centro_nord:
     cities:
       - name: florence
@@ -31,6 +35,10 @@ zones:
       - name: pesaro
         lat: 43.91
         lon: 12.91
+    wind_site:
+      name: santa_luce
+      lat: 43.4711
+      lon: 10.5641
   centro_sud:
     cities:
       - name: rome
@@ -45,6 +53,10 @@ zones:
       - name: perugia
         lat: 43.11
         lon: 12.39
+    wind_site:
+      name: bisaccia
+      lat: 41.0131
+      lon: 15.3756
   sud:
     cities:
       - name: campobasso
@@ -59,6 +71,10 @@ zones:
       - name: potenza
         lat: 40.6420
         lon: 15.8086
+    wind_site:
+      name: melfi
+      lat: 41.0435
+      lon: 15.6832
   calabria:
     cities:
       - name: reggio_calabria
@@ -73,6 +89,10 @@ zones:
       - name: crotone
         lat: 39.08
         lon: 17.13
+    wind_site:
+      name: borgia
+      lat: 38.8262
+      lon: 16.5088
   sicilia:
     cities:
       - name: palermo
@@ -87,6 +107,10 @@ zones:
       - name: trapani
         lat: 38.02
         lon: 12.53
+    wind_site:
+      name: salemi
+      lat: 37.8170
+      lon: 12.8090
   sardegna:
     cities:
       - name: cagliari
@@ -101,3 +125,7 @@ zones:
       - name: oristano
         lat: 39.90
         lon: 8.59
+    wind_site:
+      name: ulassai
+      lat: 39.7154
+      lon: 9.4962
