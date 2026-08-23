@@ -4,6 +4,7 @@ scipy
 xarray
 netCDF4
 pvlib
+windpowerlib
 pyyaml
 jupyter
 ipykernel
