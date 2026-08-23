@@ -26,7 +26,7 @@ def process_city(path):
     conv = pd.DataFrame(index=df.index)
     conv["temp_c"] = df["t2m"] - 273.15
     conv["ghi_wm2"] = (df["ssrd"] / 3600).clip(lower=0)
-    conv["dni_wm2"] = (df["fdir"] / 3600).clip(lower=0)
+    conv["bhi_wm2"] = (df["fdir"] / 3600).clip(lower=0)
     conv["pressure_pa"] = df["sp"]
     conv["wind_speed_ms"] = np.sqrt(df["u100"]**2 + df["v100"]**2)
 
