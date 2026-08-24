@@ -1,9 +1,13 @@
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pvlib
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from timeseries import read_timeseries_csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROCESSED_WEATHER_DIR = PROJECT_ROOT / "data" / "processed" / "weather"
@@ -69,11 +73,7 @@ def solar_capacity_factor(weather, lat, lon):
 
 
 def process_zone_year(zone_name, year):
-    weather = pd.read_csv(
-        PROCESSED_WEATHER_DIR / zone_name / f"weather_{year}.csv",
-        index_col=0,
-    )
-    weather.index = pd.to_datetime(weather.index, utc=True).tz_convert("Europe/Rome")
+    weather = read_timeseries_csv(PROCESSED_WEATHER_DIR / zone_name / f"weather_{year}.csv")
     lat, lon = zone_coords(zone_name)
     return solar_capacity_factor(weather, lat, lon)
 
