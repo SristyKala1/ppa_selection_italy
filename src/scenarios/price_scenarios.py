@@ -16,6 +16,9 @@ USD_PER_EUR_2010 = 1.33
 GME_PUN_2024 = 108.52
 ANCHOR_YEAR = 2024
 
+CONTRACT_START = 2026
+CONTRACT_TERM_YEARS = 15
+
 with open(PROJECT_ROOT / "config.yaml") as f:
     config = yaml.safe_load(f)
 
@@ -84,3 +87,19 @@ def merit_order_adjustment_by_year():
            + WIND_MERIT_ORDER_COEF * (wind_output[y] - wind_baseline)
         for y in solar_output
     }
+
+
+def build_price_matrix(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
+    end_year = start_year + term_years - 1
+    merit_order = merit_order_adjustment_by_year()
+
+    columns = {}
+    for scenario in SCENARIOS:
+        baseline = rescaled_price_trajectory(scenario, start_year, end_year)
+        for weather_year in range(START_YEAR, END_YEAR + 1):
+            columns[(scenario, weather_year)] = baseline + merit_order[weather_year]
+
+    matrix = pd.DataFrame(columns)
+    matrix.columns.names = ["price_scenario", "weather_year"]
+    matrix.index.name = "contract_year"
+    return matrix
