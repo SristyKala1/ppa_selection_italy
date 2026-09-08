@@ -18,8 +18,6 @@ import zipfile
 import cdsapi
 import yaml
 
-# Check CDS credentials
-
 cds_key = Path.home() / ".cdsapirc"
 
 if not cds_key.exists():
@@ -28,9 +26,6 @@ if not cds_key.exists():
         "Create ~/.cdsapirc before running this script."
     )
 
-
-
-# Read configuration
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 config_path = PROJECT_ROOT / "config.yaml"
@@ -44,13 +39,9 @@ END_YEAR = config["weather"]["end_year"]
 DATE_RANGE = f"{START_YEAR}-01-01/{END_YEAR}-12-31"
 
 
-# Output folder
-
 RAW_WEATHER_DIR = PROJECT_ROOT / "data" / "raw" / "weather"
 RAW_WEATHER_DIR.mkdir(parents=True, exist_ok=True)
 
-
-# Download function (single city, with retry + unzip)
 
 VARIABLES = [
     "2m_temperature",
@@ -107,8 +98,6 @@ def download_city(client, zone_name, city_name, lat, lon):
     print(f"  FAILED: {zone_name}/{city_name} after {MAX_RETRIES} attempts")
     return False
 
-
-# Main
 
 if __name__ == "__main__":
 
