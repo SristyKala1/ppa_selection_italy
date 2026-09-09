@@ -28,11 +28,20 @@ END_YEAR = config["weather"]["end_year"]
 
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
-SOLAR_INSTALLED_CAPACITY_GW = 37.1
-WIND_INSTALLED_CAPACITY_GW = 13.0
+SOLAR_INSTALLED_CAPACITY_GW = 30.319
+WIND_INSTALLED_CAPACITY_GW = 12.336
 
 SOLAR_MERIT_ORDER_COEF = -3.45
 WIND_MERIT_ORDER_COEF = -2.86
+
+ZONE_SOLAR_CAPACITY_GW = {
+    "nord": 14.598, "centro_nord": 2.585, "centro_sud": 4.860, "sud": 4.023,
+    "calabria": 0.729, "sicilia": 2.164, "sardegna": 1.360,
+}
+ZONE_WIND_CAPACITY_GW = {
+    "nord": 0.201, "centro_nord": 0.162, "centro_sud": 2.309, "sud": 5.010,
+    "calabria": 1.206, "sicilia": 2.277, "sardegna": 1.169,
+}
 
 
 def load_price_trajectories():
@@ -98,6 +107,37 @@ def build_price_matrix(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS
         baseline = rescaled_price_trajectory(scenario, start_year, end_year)
         for weather_year in range(START_YEAR, END_YEAR + 1):
             columns[(scenario, weather_year)] = baseline + merit_order[weather_year]
+
+    matrix = pd.DataFrame(columns)
+    matrix.columns.names = ["price_scenario", "weather_year"]
+    matrix.index.name = "contract_year"
+    return matrix
+
+
+def zone_annual_cf(technology, zone):
+    column = f"{technology}_cf"
+    return pd.Series({
+        year: pd.read_csv(PROCESSED_DIR / technology / zone / f"{column}_{year}.csv")[column].mean()
+        for year in range(START_YEAR, END_YEAR + 1)
+    })
+
+
+def zone_merit_order_adjustment(zone):
+    solar_output = zone_annual_cf("solar", zone) * ZONE_SOLAR_CAPACITY_GW[zone]
+    wind_output = zone_annual_cf("wind", zone) * ZONE_WIND_CAPACITY_GW[zone]
+    return (SOLAR_MERIT_ORDER_COEF * (solar_output - solar_output.mean())
+            + WIND_MERIT_ORDER_COEF * (wind_output - wind_output.mean()))
+
+
+def build_zonal_price_matrix(zone, start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
+    end_year = start_year + term_years - 1
+    adjustment = zone_merit_order_adjustment(zone)
+
+    columns = {}
+    for scenario in SCENARIOS:
+        baseline = rescaled_price_trajectory(scenario, start_year, end_year)
+        for weather_year in range(START_YEAR, END_YEAR + 1):
+            columns[(scenario, weather_year)] = baseline + adjustment[weather_year]
 
     matrix = pd.DataFrame(columns)
     matrix.columns.names = ["price_scenario", "weather_year"]
