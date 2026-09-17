@@ -67,7 +67,7 @@ def shape_and_basis_notes(result, zone, archetype, annual_kwh, reference_zone=No
             )
         elif t == "baseload":
             notes.append(
-                f"baseload: a fixed {contracted_mw} MW block delivered flat across all 8,760 hours "
+                f"baseload: a fixed {contracted_mw} MW block delivered flat across all 8,760 hours, "
                 f"by construction it has zero weather driven shape mismatch (the residual vs. your load "
                 f"is a constant, not a weather year varying one), which is the direct reason its cost "
                 f"has the lowest variance of any contract type in this portfolio."
