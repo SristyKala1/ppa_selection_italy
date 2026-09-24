@@ -1,6 +1,8 @@
 from optimization.portfolio import _cvar
 from scenarios.contracts import annual_residual_mwh, zonal_basis_risk
+from scenarios.eligibility import MIN_SOLAR_CF, MIN_WIND_CF, MIN_BASELOAD_VOLUME_MWH
 from scenarios.load_profile import load_profile_for_archetype
+from scenarios.price_scenarios import zone_annual_cf
 
 TECH_BY_TYPE = {"pap_solar": "solar", "pap_wind": "wind", "sleeved": "solar"}
 
@@ -80,4 +82,42 @@ def shape_and_basis_notes(result, zone, archetype, annual_kwh, reference_zone=No
                 f"€{basis.to_numpy().mean():.1f}/MWh with a scenario spread (std) of "
                 f"€{basis.to_numpy().std():.1f}/MWh, on top of the shape mismatch from wind CF alone."
             )
+    return notes
+
+
+def screening_notes(zone, annual_kwh, has_wholesale_market_access=False, reference_zone=None):
+    annual_load_mwh = annual_kwh / 1000
+    solar_cf = zone_annual_cf("solar", zone).mean()
+    wind_cf = zone_annual_cf("wind", zone).mean()
+
+    notes = []
+
+    if solar_cf < MIN_SOLAR_CF:
+        notes.append(
+            f"pap_solar and sleeved screened out, {zone}'s solar capacity factor "
+            f"({solar_cf:.1%}) is below the {MIN_SOLAR_CF:.0%} minimum."
+        )
+
+    if wind_cf < MIN_WIND_CF:
+        notes.append(
+            f"pap_wind screened out, {zone}'s wind capacity factor ({wind_cf:.1%}) "
+            f"is below the {MIN_WIND_CF:.0%} minimum."
+        )
+    elif not has_wholesale_market_access:
+        notes.append("pap_wind screened out, no wholesale market access (sleeved wind isn't modeled).")
+
+    if annual_load_mwh < MIN_BASELOAD_VOLUME_MWH:
+        notes.append(
+            f"baseload screened out, annual load ({annual_load_mwh:,.0f} MWh) is below "
+            f"the {MIN_BASELOAD_VOLUME_MWH:,.0f} MWh minimum for a firmed block."
+        )
+
+    if reference_zone is not None:
+        ref_wind_cf = zone_annual_cf("wind", reference_zone).mean()
+        if ref_wind_cf < MIN_WIND_CF:
+            notes.append(
+                f"vppa screened out, {reference_zone}'s wind capacity factor ({ref_wind_cf:.1%}) "
+                f"is below the {MIN_WIND_CF:.0%} minimum."
+            )
+
     return notes
