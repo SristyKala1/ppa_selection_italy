@@ -3,6 +3,8 @@ import pyomo.environ as pyo
 
 from scenarios.contracts import contract_cost_matrices
 from scenarios.eligibility import eligible_contracts
+from scenarios.load_profile import ARCHETYPES
+from scenarios.price_scenarios import ZONES
 
 DISCOUNT_RATE = 0.08
 ALPHA = 0.95
@@ -25,6 +27,9 @@ def _cvar(npv, alpha=ALPHA):
 
 
 def optimize_portfolio(cost_npvs, rho, alpha=ALPHA):
+    if rho < 0:
+        raise ValueError(f"rho must be >= 0, got {rho}")
+
     types = list(cost_npvs)
     index = cost_npvs[types[0]].index
     n = len(index)
@@ -85,6 +90,15 @@ def efficient_frontier(cost_npvs, rhos):
 
 def recommend(zone, archetype, annual_kwh, rho, reference_zone=None,
               has_wholesale_market_access=False, frontier_rhos=None):
+    if zone not in ZONES:
+        raise ValueError(f"unknown zone '{zone}', expected one of {ZONES}")
+    if reference_zone is not None and reference_zone not in ZONES:
+        raise ValueError(f"unknown reference zone '{reference_zone}', expected one of {ZONES}")
+    if archetype not in ARCHETYPES:
+        raise ValueError(f"unknown archetype '{archetype}', expected one of {list(ARCHETYPES)}")
+    if annual_kwh <= 0:
+        raise ValueError(f"annual_kwh must be positive, got {annual_kwh}")
+
     eligible = eligible_contracts(
         zone, annual_kwh,
         has_wholesale_market_access=has_wholesale_market_access,

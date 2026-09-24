@@ -64,7 +64,7 @@ def aggregate_zone(city_data, zone_name):
 
     if len(common_index) == 0:
         raise ValueError(
-            f"{zone_name}: no overlapping timestamps across cities — check for corrupted/misaligned downloads"
+            f"{zone_name}: no overlapping timestamps across cities, check for corrupted/misaligned downloads"
         )
 
     stacked = pd.concat(city_data.values(), keys=city_data.keys())

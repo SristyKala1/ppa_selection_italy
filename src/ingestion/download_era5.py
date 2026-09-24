@@ -5,7 +5,7 @@ Downloads ERA5 hourly weather timeseries (1991-2023) from the Copernicus
 Climate Data Store, using the point-location Timeseries API.
 
 One request per city covers the full 33-year range. Responses always come
-back as a zip (confirmed via test request, 2026-08-04 — the API ignores
+back as a zip (confirmed via test request, 2026-08-04, the API ignores
 download_format and defaults to zip regardless), so each city's download
 is unzipped and the extracted file renamed to the canonical path.
 """

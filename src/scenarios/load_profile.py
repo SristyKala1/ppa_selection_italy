@@ -64,5 +64,9 @@ def synthetic_load_profile(nace_class, power_level, annual_kwh):
 
 
 def load_profile_for_archetype(archetype, annual_kwh):
+    if archetype not in ARCHETYPES:
+        raise ValueError(f"unknown archetype '{archetype}', expected one of {list(ARCHETYPES)}")
+    if annual_kwh <= 0:
+        raise ValueError(f"annual_kwh must be positive, got {annual_kwh}")
     nace_class, power_level = ARCHETYPES[archetype]
     return synthetic_load_profile(nace_class, power_level, annual_kwh)

@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from optimization.portfolio import recommend
-from explainability.rationale import contract_rationale, shape_and_basis_notes
+from explainability.rationale import contract_rationale, shape_and_basis_notes, screening_notes
 from scenarios.load_profile import ARCHETYPES
 
 with open(PROJECT_ROOT / "config.yaml") as f:
@@ -77,5 +77,12 @@ if run:
 
     if not result["eligible"]:
         st.warning("No renewable PPA types are eligible for this profile, staying on spot is the only option.")
+
+    notes = screening_notes(zone, annual_kwh, has_wholesale_market_access=has_wholesale_market_access,
+                             reference_zone=reference_zone)
+    if notes:
+        st.subheader("Why other types aren't showing up")
+        for line in notes:
+            st.write(f"- {line}")
 else:
     st.write("Set your factory profile in the sidebar and click Recommend portfolio.")
