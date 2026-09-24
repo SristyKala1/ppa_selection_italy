@@ -11,7 +11,7 @@ VARIABLE = "Price|Secondary Energy|Electricity"
 SCENARIOS = ["Delayed transition", "Nationally Determined Contributions (NDCs)", "Net Zero 2050"]
 
 GJ_PER_MWH = 3.6
-USD_PER_EUR_2010 = 1.33
+USD_PER_EUR_2010 = 1.33  # Fed H.10 2010 daily average works out to 1.326
 
 GME_PUN_2024 = 108.52
 ANCHOR_YEAR = 2024
@@ -41,6 +41,12 @@ ZONE_SOLAR_CAPACITY_GW = {
 ZONE_WIND_CAPACITY_GW = {
     "nord": 0.201, "centro_nord": 0.162, "centro_sud": 2.309, "sud": 5.010,
     "calabria": 1.206, "sicilia": 2.277, "sardegna": 1.169,
+}
+
+# deviation from cross-zone mean price, GSE zonal MGP data 2021-2025
+ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH = {
+    "nord": 2.12, "centro_nord": 2.84, "centro_sud": 0.66, "sud": -0.96,
+    "calabria": -1.41, "sicilia": 0.99, "sardegna": -4.23,
 }
 
 
@@ -115,6 +121,8 @@ def build_price_matrix(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS
 
 
 def zone_annual_cf(technology, zone):
+    if zone not in ZONES:
+        raise ValueError(f"unknown zone '{zone}', expected one of {ZONES}")
     column = f"{technology}_cf"
     return pd.Series({
         year: pd.read_csv(PROCESSED_DIR / technology / zone / f"{column}_{year}.csv")[column].mean()
@@ -125,8 +133,9 @@ def zone_annual_cf(technology, zone):
 def zone_merit_order_adjustment(zone):
     solar_output = zone_annual_cf("solar", zone) * ZONE_SOLAR_CAPACITY_GW[zone]
     wind_output = zone_annual_cf("wind", zone) * ZONE_WIND_CAPACITY_GW[zone]
-    return (SOLAR_MERIT_ORDER_COEF * (solar_output - solar_output.mean())
-            + WIND_MERIT_ORDER_COEF * (wind_output - wind_output.mean()))
+    weather_driven = (SOLAR_MERIT_ORDER_COEF * (solar_output - solar_output.mean())
+                       + WIND_MERIT_ORDER_COEF * (wind_output - wind_output.mean()))
+    return weather_driven + ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH[zone]
 
 
 def build_zonal_price_matrix(zone, start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
