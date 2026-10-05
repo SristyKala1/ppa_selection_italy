@@ -9,6 +9,9 @@ from scenarios.price_scenarios import ZONES
 DISCOUNT_RATE = 0.08
 ALPHA = 0.95
 
+COVERAGE_SHARES = [0.1, 0.2, 0.3, 0.5, 0.75, 1.0]
+SIZED_TYPES = {"pap_solar", "pap_wind", "sleeved", "baseload", "vppa"}
+
 
 def scenario_npv(cost_matrix, discount_rate=DISCOUNT_RATE):
     years = cost_matrix.index
@@ -26,7 +29,8 @@ def _cvar(npv, alpha=ALPHA):
     return (worst[:whole].sum() + (k - whole) * worst[whole]) / k
 
 
-def optimize_portfolio(cost_npvs, rho, alpha=ALPHA):
+def optimize_portfolio(cost_npvs, rho=0, alpha=ALPHA, cvar_budget=None):
+    # either penalise tail cost (rho), or cap it (cvar_budget) and minimise expected cost
     if rho < 0:
         raise ValueError(f"rho must be >= 0, got {rho}")
 
@@ -50,6 +54,8 @@ def optimize_portfolio(cost_npvs, rho, alpha=ALPHA):
 
     expected = sum(scenario_cost(m, i) for i in m.S) / n
     cvar = m.eta + sum(m.z[i] for i in m.S) / ((1 - alpha) * n)
+    if cvar_budget is not None:
+        m.budget = pyo.Constraint(expr=cvar <= cvar_budget)
     m.obj = pyo.Objective(expr=expected + rho * cvar, sense=pyo.minimize)
 
     outcome = pyo.SolverFactory("appsi_highs").solve(m)
@@ -88,8 +94,8 @@ def efficient_frontier(cost_npvs, rhos):
     return frontier
 
 
-def recommend(zone, archetype, annual_kwh, rho, reference_zone=None,
-              has_wholesale_market_access=False, frontier_rhos=None):
+def candidate_npvs(zone, archetype, annual_kwh, reference_zone=None,
+                   has_wholesale_market_access=False):
     if zone not in ZONES:
         raise ValueError(f"unknown zone '{zone}', expected one of {ZONES}")
     if reference_zone is not None and reference_zone not in ZONES:
@@ -104,15 +110,40 @@ def recommend(zone, archetype, annual_kwh, rho, reference_zone=None,
         has_wholesale_market_access=has_wholesale_market_access,
         reference_zone=reference_zone,
     )
-    matrices = contract_cost_matrices(zone, archetype, annual_kwh, reference_zone=reference_zone)
 
-    selected = {name: matrices[name] for name in sorted(eligible)}
-    selected["spot_only"] = matrices["spot_only"]
-    cost_npvs = {name: scenario_npv(mat) for name, mat in selected.items()}
+    selected = {}
+    for share in COVERAGE_SHARES:
+        matrices = contract_cost_matrices(zone, archetype, annual_kwh, coverage=share,
+                                           reference_zone=reference_zone)
+        for name in sorted(eligible & SIZED_TYPES):
+            selected[f"{name}_{share:.0%}"] = matrices[name]
+        if share == 1.0:
+            for name in sorted(eligible - SIZED_TYPES):
+                selected[name] = matrices[name]
+            selected["spot_only"] = matrices["spot_only"]
 
-    result = optimize_portfolio(cost_npvs, rho)
+    return eligible, {name: scenario_npv(mat) for name, mat in selected.items()}
+
+
+def recommend_from_npvs(cost_npvs, tail_tolerance):
+    # tail_tolerance 1 = accept the cheapest portfolio's tail, 0 = lowest tail reachable
+    if not 0 <= tail_tolerance <= 1:
+        raise ValueError(f"tail_tolerance must be between 0 and 1, got {tail_tolerance}")
+    cheapest = optimize_portfolio(cost_npvs, rho=0)
+    safest = optimize_portfolio(cost_npvs, rho=1000)
+    budget = safest["cvar"] + tail_tolerance * (cheapest["cvar"] - safest["cvar"])
+    # small slack so the budget at 0 stays feasible after solver rounding
+    result = optimize_portfolio(cost_npvs, cvar_budget=budget + 1)
+    result["cheapest"] = cheapest
+    result["safest"] = safest
+    return result
+
+
+def recommend(zone, archetype, annual_kwh, tail_tolerance, reference_zone=None,
+              has_wholesale_market_access=False):
+    eligible, cost_npvs = candidate_npvs(zone, archetype, annual_kwh, reference_zone,
+                                         has_wholesale_market_access)
+    result = recommend_from_npvs(cost_npvs, tail_tolerance)
     result["eligible"] = sorted(eligible)
     result["contract_npvs"] = cost_npvs
-    if frontier_rhos is not None:
-        result["frontier"] = efficient_frontier(cost_npvs, frontier_rhos)
     return result

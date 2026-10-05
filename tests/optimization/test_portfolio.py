@@ -1,27 +1,29 @@
 import pandas as pd
 import pytest
 
-from optimization.portfolio import _cvar, efficient_frontier, optimize_portfolio, recommend, scenario_npv
+from optimization.portfolio import (
+    _cvar, candidate_npvs, efficient_frontier, optimize_portfolio, recommend, recommend_from_npvs, scenario_npv,
+)
 
 
 def test_recommend_rejects_unknown_zone():
     with pytest.raises(ValueError):
-        recommend("atlantis", "chemicals", 20_000_000, rho=3)
+        recommend("atlantis", "chemicals", 20_000_000, tail_tolerance=0.5)
 
 
 def test_recommend_rejects_unknown_reference_zone():
     with pytest.raises(ValueError):
-        recommend("nord", "chemicals", 20_000_000, rho=3, reference_zone="atlantis")
+        recommend("nord", "chemicals", 20_000_000, tail_tolerance=0.5, reference_zone="atlantis")
 
 
 def test_recommend_rejects_unknown_archetype():
     with pytest.raises(ValueError):
-        recommend("nord", "spaceship_yard", 20_000_000, rho=3)
+        recommend("nord", "spaceship_yard", 20_000_000, tail_tolerance=0.5)
 
 
 def test_recommend_rejects_non_positive_annual_kwh():
     with pytest.raises(ValueError):
-        recommend("nord", "chemicals", 0, rho=3)
+        recommend("nord", "chemicals", 0, tail_tolerance=0.5)
 
 
 def test_optimize_portfolio_rejects_negative_rho():
@@ -29,21 +31,43 @@ def test_optimize_portfolio_rejects_negative_rho():
         optimize_portfolio({"spot_only": None}, rho=-5)
 
 
-def test_recommend_happy_path_nord_sud_matches_documented_case():
-    # nord buying, sud as the VPPA reference zone, the risk-return pivot example.
-    # the earlier centro_nord/sardegna example didn't survive the basis-risk structural offset
-    result = recommend(
-        "nord", "chemicals", 20_000_000, rho=10,
-        reference_zone="sud", has_wholesale_market_access=True,
-    )
-    assert result["weights"]["pap_solar"] == pytest.approx(0.581, abs=0.01)
-    assert result["weights"]["vppa"] == pytest.approx(0.419, abs=0.01)
-    assert sum(result["weights"].values()) == pytest.approx(1.0)
+@pytest.fixture(scope="module")
+def nord_sud_npvs():
+    # nord buying, sud as the VPPA reference zone
+    _, npvs = candidate_npvs("nord", "chemicals", 20_000_000, reference_zone="sud",
+                             has_wholesale_market_access=True)
+    return npvs
 
 
-def test_recommend_tiny_consumer_collapses_to_spot_only():
-    result = recommend("nord", "office_services", 100_000, rho=3, has_wholesale_market_access=False)
-    assert result["weights"]["spot_only"] == pytest.approx(1.0)
+def test_recommend_rejects_tail_tolerance_outside_0_to_1(nord_sud_npvs):
+    with pytest.raises(ValueError):
+        recommend_from_npvs(nord_sud_npvs, 1.5)
+
+
+def test_mid_tolerance_blends_solar_and_vppa(nord_sud_npvs):
+    result = recommend_from_npvs(nord_sud_npvs, 0.6)
+    weights = result["weights"]
+    assert weights["pap_solar_30%"] > 0.3
+    assert weights["vppa_100%"] > 0.3
+    assert sum(weights.values()) == pytest.approx(1.0)
+
+
+def test_lower_tolerance_costs_more_and_cuts_the_tail(nord_sud_npvs):
+    loose = recommend_from_npvs(nord_sud_npvs, 1.0)
+    tight = recommend_from_npvs(nord_sud_npvs, 0.0)
+    assert tight["expected_cost"] > loose["expected_cost"]
+    assert tight["cvar"] < loose["cvar"]
+
+
+def test_cvar_budget_is_respected(nord_sud_npvs):
+    result = optimize_portfolio(nord_sud_npvs, cvar_budget=20_000_000)
+    assert result["cvar"] <= 20_000_000 + 1
+
+
+def test_recommend_tiny_consumer_gets_a_small_sleeved_contract():
+    result = recommend("nord", "office_services", 100_000, tail_tolerance=0.5, has_wholesale_market_access=False)
+    top = max(result["weights"], key=result["weights"].get)
+    assert top.startswith("sleeved_")
 
 
 def test_scenario_npv_with_zero_discount_is_a_plain_sum():
@@ -71,13 +95,8 @@ def test_cvar_interpolates_a_fractional_tail():
     assert _cvar(npv, alpha=0.5) == pytest.approx(26.666, abs=0.001)
 
 
-def test_efficient_frontier_expected_cost_rises_and_cvar_falls_with_rho():
-    result = recommend(
-        "nord", "chemicals", 20_000_000, rho=10,
-        reference_zone="sud", has_wholesale_market_access=True,
-        frontier_rhos=[0, 5, 10, 20],
-    )
-    frontier = result["frontier"]
+def test_efficient_frontier_expected_cost_rises_and_cvar_falls_with_rho(nord_sud_npvs):
+    frontier = efficient_frontier(nord_sud_npvs, [0, 1, 3, 10])
     assert len(frontier) == 4
     assert frontier.index.name == "rho"
     assert frontier["expected_cost"].is_monotonic_increasing
