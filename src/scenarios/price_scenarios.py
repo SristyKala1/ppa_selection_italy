@@ -1,5 +1,7 @@
+from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -42,6 +44,12 @@ ZONE_WIND_CAPACITY_GW = {
     "nord": 0.201, "centro_nord": 0.162, "centro_sud": 2.309, "sud": 5.010,
     "calabria": 1.206, "sicilia": 2.277, "sardegna": 1.169,
 }
+
+# AR(1) on detrended log annual PUN, GME 2004-2024 (incl. the 2021-2023 gas crisis)
+PRICE_SHOCK_PERSISTENCE = 0.52
+PRICE_SHOCK_VOLATILITY = 0.37
+N_PRICE_PATHS = 50
+PRICE_SHOCK_SEED = 42
 
 # deviation from cross-zone mean price, GSE zonal MGP data 2021-2025
 ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH = {
@@ -120,6 +128,7 @@ def build_price_matrix(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS
     return matrix
 
 
+@lru_cache(maxsize=None)
 def zone_annual_cf(technology, zone):
     if zone not in ZONES:
         raise ValueError(f"unknown zone '{zone}', expected one of {ZONES}")
@@ -138,15 +147,37 @@ def zone_merit_order_adjustment(zone):
     return weather_driven + ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH[zone]
 
 
+def price_shock_paths(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
+    # same seed every call, so every zone sees the same national shocks
+    rng = np.random.default_rng(PRICE_SHOCK_SEED)
+    years = range(start_year, start_year + term_years)
+    phi, sigma = PRICE_SHOCK_PERSISTENCE, PRICE_SHOCK_VOLATILITY
+    mean_correction = sigma**2 / (2 * (1 - phi**2))  # keeps each multiplier's mean at 1
+    paths = {}
+    for scenario in SCENARIOS:
+        for k in range(N_PRICE_PATHS):
+            x = rng.normal(0, sigma / np.sqrt(1 - phi**2))
+            multipliers = []
+            for _ in years:
+                multipliers.append(np.exp(x - mean_correction))
+                x = phi * x + rng.normal(0, sigma)
+            paths[(scenario, k)] = pd.Series(multipliers, index=list(years))
+    return paths
+
+
+@lru_cache(maxsize=None)
 def build_zonal_price_matrix(zone, start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
     end_year = start_year + term_years - 1
     adjustment = zone_merit_order_adjustment(zone)
+    shocks = price_shock_paths(start_year, term_years)
 
     columns = {}
     for scenario in SCENARIOS:
         baseline = rescaled_price_trajectory(scenario, start_year, end_year)
-        for weather_year in range(START_YEAR, END_YEAR + 1):
-            columns[(scenario, weather_year)] = baseline + adjustment[weather_year]
+        for k in range(N_PRICE_PATHS):
+            shocked = baseline * shocks[(scenario, k)]
+            for weather_year in range(START_YEAR, END_YEAR + 1):
+                columns[(f"{scenario} #{k}", weather_year)] = shocked + adjustment[weather_year]
 
     matrix = pd.DataFrame(columns)
     matrix.columns.names = ["price_scenario", "weather_year"]

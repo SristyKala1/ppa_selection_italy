@@ -2,7 +2,10 @@ import pytest
 
 from scenarios.price_scenarios import (
     ANCHOR_YEAR,
+    END_YEAR,
     GME_PUN_2024,
+    N_PRICE_PATHS,
+    START_YEAR,
     SCENARIOS,
     ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH,
     build_zonal_price_matrix,
@@ -38,5 +41,5 @@ def test_zone_merit_order_adjustment_centers_on_the_structural_offset():
 
 def test_zonal_price_matrix_shape_and_column_names():
     matrix = build_zonal_price_matrix("nord")
-    assert matrix.shape == (15, 99)
+    assert matrix.shape == (15, len(SCENARIOS) * N_PRICE_PATHS * (END_YEAR - START_YEAR + 1))
     assert matrix.columns.names == ["price_scenario", "weather_year"]

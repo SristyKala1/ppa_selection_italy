@@ -3,7 +3,9 @@ import pytest
 
 from scenarios.contracts import annual_residual_mwh, contract_cost_matrices, zonal_basis_risk
 from scenarios.load_profile import load_profile_for_archetype
-from scenarios.price_scenarios import START_YEAR, END_YEAR, ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH
+from scenarios.price_scenarios import (
+    START_YEAR, END_YEAR, N_PRICE_PATHS, SCENARIOS, ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH,
+)
 
 
 def test_returns_a_matrix_per_type_including_vppa_when_reference_zone_given():
@@ -16,9 +18,9 @@ def test_vppa_missing_without_a_reference_zone():
     assert "vppa" not in matrices
 
 
-def test_matrix_shape_is_15_contract_years_by_99_scenarios():
+def test_matrix_shape_is_15_contract_years_by_all_scenarios():
     matrices = contract_cost_matrices("nord", "chemicals", 20_000_000)
-    assert matrices["pap_solar"].shape == (15, 99)
+    assert matrices["pap_solar"].shape == (15, len(SCENARIOS) * N_PRICE_PATHS * (END_YEAR - START_YEAR + 1))
 
 
 def test_costs_are_all_positive():
