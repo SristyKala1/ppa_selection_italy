@@ -8,7 +8,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from optimization.portfolio import recommend
+from optimization.portfolio import candidate_npvs, recommend_from_npvs
 from explainability.rationale import contract_rationale, shape_and_basis_notes, screening_notes
 from scenarios.load_profile import ARCHETYPES
 
@@ -17,12 +17,11 @@ with open(PROJECT_ROOT / "config.yaml") as f:
 
 ZONES = list(config["zones"].keys())
 
-RISK_LEVELS = {
-    "Minimize cost": 0,
-    "Balanced": 3,
-    "Risk averse": 8,
-    "Very risk averse": 20,
-}
+
+
+@st.cache_data(show_spinner="Building contract cost scenarios...")
+def cached_candidates(zone, archetype, annual_kwh, reference_zone, has_wholesale_market_access):
+    return candidate_npvs(zone, archetype, annual_kwh, reference_zone, has_wholesale_market_access)
 
 st.set_page_config(page_title="PPA Portfolio Selector", layout="wide")
 st.title("Renewable PPA Portfolio Selector")
@@ -43,17 +42,19 @@ with st.sidebar:
         reference_zone = st.selectbox("Reference zone", other_zones)
 
     st.header("Risk appetite")
-    risk_label = st.select_slider("Risk aversion", options=list(RISK_LEVELS.keys()), value="Balanced")
-    rho = RISK_LEVELS[risk_label]
+    tolerance_pct = st.slider(
+        "Tail risk you're willing to accept", 0, 100, 50, step=10, format="%d%%",
+        help="100% = cheapest portfolio, whatever its worst case. 0% = lowest worst-case cost reachable.",
+    )
 
     run = st.button("Recommend portfolio", type="primary")
 
 if run:
-    result = recommend(
-        zone, archetype, annual_kwh, rho,
-        reference_zone=reference_zone,
-        has_wholesale_market_access=has_wholesale_market_access,
-    )
+    eligible, npvs = cached_candidates(zone, archetype, annual_kwh, reference_zone,
+                                       has_wholesale_market_access)
+    result = recommend_from_npvs(npvs, tolerance_pct / 100)
+    result["eligible"] = sorted(eligible)
+    result["contract_npvs"] = npvs
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Expected cost (15yr NPV)", f"€{result['expected_cost']/1e6:.2f}M")
