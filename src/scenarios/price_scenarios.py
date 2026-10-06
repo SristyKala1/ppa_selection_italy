@@ -45,9 +45,10 @@ ZONE_WIND_CAPACITY_GW = {
     "calabria": 1.206, "sicilia": 2.277, "sardegna": 1.169,
 }
 
-# AR(1) on detrended log annual PUN, GME 2004-2024 (incl. the 2021-2023 gas crisis)
+# AR(1) on detrended log annual PUN, GME 2005-2024 (incl. the 2021-2023 gas crisis);
+# 2004 left out, the exchange only opened in April that year
 PRICE_SHOCK_PERSISTENCE = 0.52
-PRICE_SHOCK_VOLATILITY = 0.37
+PRICE_SHOCK_VOLATILITY = 0.38
 N_PRICE_PATHS = 50
 PRICE_SHOCK_SEED = 42
 
