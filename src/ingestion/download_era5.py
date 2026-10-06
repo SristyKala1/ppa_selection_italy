@@ -18,13 +18,13 @@ import zipfile
 import cdsapi
 import yaml
 
-cds_key = Path.home() / ".cdsapirc"
-
-if not cds_key.exists():
-    raise FileNotFoundError(
-        "CDS API credentials not found.\n"
-        "Create ~/.cdsapirc before running this script."
-    )
+def check_credentials():
+    # only when actually downloading, so importing this module (e.g. in tests) doesn't need credentials
+    if not (Path.home() / ".cdsapirc").exists():
+        raise FileNotFoundError(
+            "CDS API credentials not found.\n"
+            "Create ~/.cdsapirc before running this script."
+        )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -100,7 +100,7 @@ def download_city(client, zone_name, city_name, lat, lon):
 
 
 if __name__ == "__main__":
-
+    check_credentials()
     client = cdsapi.Client()
 
     total_cities = sum(len(z["cities"]) + 1 for z in ZONES.values())

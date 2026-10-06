@@ -64,3 +64,9 @@ def test_gives_up_after_max_retries(tmp_path, monkeypatch):
     assert client.calls == download_era5.MAX_RETRIES
     assert not (tmp_path / "era5_nord_torino.nc").exists()
     assert not list(tmp_path.glob("_tmp_*.zip"))
+
+
+def test_check_credentials_fails_clearly_without_cdsapirc(tmp_path, monkeypatch):
+    monkeypatch.setattr(download_era5.Path, "home", lambda: tmp_path)
+    with pytest.raises(FileNotFoundError):
+        download_era5.check_credentials()
