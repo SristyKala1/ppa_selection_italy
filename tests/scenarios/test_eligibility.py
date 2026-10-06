@@ -13,6 +13,13 @@ def test_nord_without_market_access_gets_sleeved_instead_of_pap_solar():
     assert "sleeved" in eligible
     assert "pap_solar" not in eligible
     assert "pap_wind" not in eligible
+    assert "sleeved_wind" not in eligible  # nord wind is too weak either way
+
+
+def test_sicilia_without_market_access_gets_sleeved_wind_instead_of_pap_wind():
+    eligible = eligible_contracts("sicilia", 20_000_000, has_wholesale_market_access=False)
+    assert "sleeved_wind" in eligible
+    assert "pap_wind" not in eligible
 
 
 def test_sicilia_with_market_access_gets_both_pap_types():
@@ -28,11 +35,13 @@ def test_baseload_needs_enough_volume():
     assert "baseload" in large
 
 
-def test_vppa_depends_on_the_reference_zones_wind_cf():
+def test_vppa_depends_on_the_reference_zones_own_resource_per_technology():
     strong_wind_ref = eligible_contracts("nord", 20_000_000, reference_zone="sicilia")
     weak_wind_ref = eligible_contracts("nord", 20_000_000, reference_zone="nord")
-    assert "vppa" in strong_wind_ref
-    assert "vppa" not in weak_wind_ref
+    assert "vppa_wind" in strong_wind_ref
+    assert "vppa_wind" not in weak_wind_ref
+    # nord's solar CF is fine, so its virtual solar PPA survives even where wind doesn't
+    assert "vppa_solar" in weak_wind_ref
 
 
 def test_spot_only_is_never_in_the_eligible_set():

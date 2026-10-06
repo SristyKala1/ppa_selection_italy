@@ -10,7 +10,7 @@ DISCOUNT_RATE = 0.08
 ALPHA = 0.95
 
 COVERAGE_SHARES = [0.1, 0.2, 0.3, 0.5, 0.75, 1.0]
-SIZED_TYPES = {"pap_solar", "pap_wind", "sleeved", "baseload", "vppa"}
+SIZED_TYPES = {"pap_solar", "pap_wind", "sleeved", "sleeved_wind", "baseload", "vppa_solar", "vppa_wind"}
 
 
 def scenario_npv(cost_matrix, discount_rate=DISCOUNT_RATE):
@@ -37,7 +37,8 @@ def optimize_portfolio(cost_npvs, rho=0, alpha=ALPHA, cvar_budget=None):
     types = list(cost_npvs)
     index = cost_npvs[types[0]].index
     n = len(index)
-    cost = {(t, i): cost_npvs[t].iloc[i] for t in types for i in range(n)}
+    values = {t: cost_npvs[t].to_numpy() for t in types}
+    cost = {(t, i): v for t in types for i, v in enumerate(values[t])}
 
     m = pyo.ConcreteModel()
     m.T = pyo.Set(initialize=types)
@@ -52,7 +53,8 @@ def optimize_portfolio(cost_npvs, rho=0, alpha=ALPHA, cvar_budget=None):
     m.weights_sum = pyo.Constraint(expr=sum(m.w[t] for t in types) == 1)
     m.tail = pyo.Constraint(m.S, rule=lambda mm, i: mm.z[i] >= scenario_cost(mm, i) - mm.eta)
 
-    expected = sum(scenario_cost(m, i) for i in m.S) / n
+    # linear in the weights, so the mean over scenarios is just each type's own mean
+    expected = sum(m.w[t] * values[t].mean() for t in types)
     cvar = m.eta + sum(m.z[i] for i in m.S) / ((1 - alpha) * n)
     if cvar_budget is not None:
         m.budget = pyo.Constraint(expr=cvar <= cvar_budget)
@@ -65,9 +67,7 @@ def optimize_portfolio(cost_npvs, rho=0, alpha=ALPHA, cvar_budget=None):
     raw = {t: max(pyo.value(m.w[t]), 0.0) for t in types}
     total = sum(raw.values())
     weights = {t: v / total for t, v in raw.items()}
-    portfolio_npv = pd.Series(
-        [sum(weights[t] * cost[(t, i)] for t in types) for i in range(n)], index=index
-    )
+    portfolio_npv = pd.Series(sum(weights[t] * values[t] for t in types), index=index)
 
     result = {
         "weights": weights,
@@ -111,10 +111,12 @@ def candidate_npvs(zone, archetype, annual_kwh, reference_zone=None,
         reference_zone=reference_zone,
     )
 
+    # no point building vppa matrices for a reference zone the screen already rejected
+    vppa_reference = reference_zone if eligible & {"vppa_solar", "vppa_wind"} else None
     selected = {}
     for share in COVERAGE_SHARES:
         matrices = contract_cost_matrices(zone, archetype, annual_kwh, coverage=share,
-                                           reference_zone=reference_zone)
+                                           reference_zone=vppa_reference)
         for name in sorted(eligible & SIZED_TYPES):
             selected[f"{name}_{share:.0%}"] = matrices[name]
         if share == 1.0:
@@ -125,18 +127,27 @@ def candidate_npvs(zone, archetype, annual_kwh, reference_zone=None,
     return eligible, {name: scenario_npv(mat) for name, mat in selected.items()}
 
 
-def recommend_from_npvs(cost_npvs, tail_tolerance):
-    # tail_tolerance 1 = accept the cheapest portfolio's tail, 0 = lowest tail reachable
-    if not 0 <= tail_tolerance <= 1:
-        raise ValueError(f"tail_tolerance must be between 0 and 1, got {tail_tolerance}")
+def tail_frontier(cost_npvs, tolerances):
+    # tolerance 1 = accept the cheapest portfolio's tail, 0 = lowest tail reachable
+    for tol in tolerances:
+        if not 0 <= tol <= 1:
+            raise ValueError(f"tail_tolerance must be between 0 and 1, got {tol}")
     cheapest = optimize_portfolio(cost_npvs, rho=0)
     safest = optimize_portfolio(cost_npvs, rho=1000)
-    budget = safest["cvar"] + tail_tolerance * (cheapest["cvar"] - safest["cvar"])
-    # small slack so the budget at 0 stays feasible after solver rounding
-    result = optimize_portfolio(cost_npvs, cvar_budget=budget + 1)
-    result["cheapest"] = cheapest
-    result["safest"] = safest
-    return result
+
+    frontier = {}
+    for tol in tolerances:
+        budget = safest["cvar"] + tol * (cheapest["cvar"] - safest["cvar"])
+        # small slack so the budget at 0 stays feasible after solver rounding
+        result = optimize_portfolio(cost_npvs, cvar_budget=budget + 1)
+        result["cheapest"] = cheapest
+        result["safest"] = safest
+        frontier[tol] = result
+    return frontier
+
+
+def recommend_from_npvs(cost_npvs, tail_tolerance):
+    return tail_frontier(cost_npvs, [tail_tolerance])[tail_tolerance]
 
 
 def recommend(zone, archetype, annual_kwh, tail_tolerance, reference_zone=None,

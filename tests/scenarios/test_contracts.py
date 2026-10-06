@@ -10,12 +10,14 @@ from scenarios.price_scenarios import (
 
 def test_returns_a_matrix_per_type_including_vppa_when_reference_zone_given():
     matrices = contract_cost_matrices("nord", "chemicals", 20_000_000, reference_zone="sicilia")
-    assert set(matrices) == {"pap_solar", "pap_wind", "sleeved", "baseload", "spot_only", "vppa"}
+    assert set(matrices) == {"pap_solar", "pap_wind", "sleeved", "sleeved_wind", "baseload", "spot_only",
+                             "vppa_solar", "vppa_wind"}
 
 
 def test_vppa_missing_without_a_reference_zone():
     matrices = contract_cost_matrices("nord", "chemicals", 20_000_000)
-    assert "vppa" not in matrices
+    assert "vppa_solar" not in matrices
+    assert "vppa_wind" not in matrices
 
 
 def test_matrix_shape_is_15_contract_years_by_all_scenarios():
@@ -29,10 +31,10 @@ def test_costs_are_all_positive():
         assert (matrix > 0).all().all(), f"{name} has a non-positive cost somewhere"
 
 
-def test_sleeved_is_pap_solar_plus_a_positive_fee():
-    matrices = contract_cost_matrices("nord", "chemicals", 20_000_000)
-    diff = matrices["sleeved"] - matrices["pap_solar"]
-    assert (diff > 0).all().all()
+def test_sleeved_is_pap_plus_a_positive_fee_for_both_technologies():
+    matrices = contract_cost_matrices("sicilia", "chemicals", 20_000_000)
+    assert (matrices["sleeved"] - matrices["pap_solar"] > 0).all().all()
+    assert (matrices["sleeved_wind"] - matrices["pap_wind"] > 0).all().all()
 
 
 def test_annual_residual_covers_every_weather_year_and_is_never_negative():

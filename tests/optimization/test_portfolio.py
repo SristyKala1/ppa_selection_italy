@@ -48,7 +48,7 @@ def test_mid_tolerance_blends_solar_and_vppa(nord_sud_npvs):
     result = recommend_from_npvs(nord_sud_npvs, 0.6)
     weights = result["weights"]
     assert weights["pap_solar_30%"] > 0.3
-    assert weights["vppa_100%"] > 0.3
+    assert weights["vppa_wind_100%"] > 0.3
     assert sum(weights.values()) == pytest.approx(1.0)
 
 

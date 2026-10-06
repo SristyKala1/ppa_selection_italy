@@ -7,12 +7,14 @@ from optimization.portfolio import recommend
 
 def test_flags_weak_wind_reference_zone():
     notes = screening_notes("nord", 20_000_000, has_wholesale_market_access=True, reference_zone="nord")
-    assert any("vppa screened out" in n for n in notes)
+    assert any("Virtual wind PPA screened out" in n for n in notes)
+    passing = [n.split("Reference zones that pass: ")[1].rstrip(".").split(", ") for n in notes if "pass:" in n][0]
+    assert "nord" not in passing and "sud" in passing
 
 
 def test_flags_low_baseload_volume():
     notes = screening_notes("sicilia", 100_000, has_wholesale_market_access=False)
-    assert any("baseload screened out" in n for n in notes)
+    assert any("Baseload PPA screened out" in n for n in notes)
 
 
 def test_no_notes_when_nothing_is_screened_out():
@@ -38,15 +40,15 @@ def nord_sud_blend():
 
 def test_contract_rationale_narrates_both_types_in_a_two_way_portfolio(nord_sud_blend):
     lines = contract_rationale(nord_sud_blend)
-    assert any("pap_solar_30%" in l and "cheapest on average" in l for l in lines)
-    assert any("vppa_100%" in l and "cuts CVaR by" in l for l in lines)
+    assert any(l.startswith("Solar PPA sized at 30%") and "cheapest on average" in l for l in lines)
+    assert any(l.startswith("Virtual wind PPA sized at 100%") and "cuts CVaR by" in l for l in lines)
     assert any("Vs. staying on spot" in l for l in lines)
 
 
 def test_shape_and_basis_notes_covers_vppa(nord_sud_blend):
     notes = shape_and_basis_notes(nord_sud_blend, "nord", "chemicals", 20_000_000, reference_zone="sud")
     assert any("basis risk" in n for n in notes)
-    assert any("pap_solar_30%" in n and "uncovered" in n for n in notes)
+    assert any(n.startswith("Solar PPA") and "uncovered" in n for n in notes)
 
 
 def test_shape_and_basis_notes_covers_baseload():

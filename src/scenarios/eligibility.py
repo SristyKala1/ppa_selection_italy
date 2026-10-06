@@ -15,13 +15,16 @@ def eligible_contracts(zone, annual_kwh, has_wholesale_market_access=False, refe
     if solar_cf >= MIN_SOLAR_CF:
         eligible.add("pap_solar" if has_wholesale_market_access else "sleeved")
 
-    if has_wholesale_market_access and wind_cf >= MIN_WIND_CF:
-        eligible.add("pap_wind")
+    if wind_cf >= MIN_WIND_CF:
+        eligible.add("pap_wind" if has_wholesale_market_access else "sleeved_wind")
 
     if annual_load_mwh >= MIN_BASELOAD_VOLUME_MWH:
         eligible.add("baseload")
 
-    if reference_zone is not None and zone_annual_cf("wind", reference_zone).mean() >= MIN_WIND_CF:
-        eligible.add("vppa")
+    if reference_zone is not None:
+        if zone_annual_cf("wind", reference_zone).mean() >= MIN_WIND_CF:
+            eligible.add("vppa_wind")
+        if zone_annual_cf("solar", reference_zone).mean() >= MIN_SOLAR_CF:
+            eligible.add("vppa_solar")
 
     return eligible
