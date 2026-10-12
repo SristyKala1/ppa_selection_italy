@@ -27,7 +27,6 @@ def process_wind_site(path):
     df = df.set_index(time_col)
 
     wind_speed = np.sqrt(df["u100"] ** 2 + df["v100"] ** 2)
-    wind_speed = wind_speed.resample("15min").asfreq().interpolate(method="time")
     wind_speed.index = wind_speed.index.tz_localize("UTC").tz_convert("Europe/Rome")
     return wind_speed
 

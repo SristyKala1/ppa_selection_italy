@@ -54,6 +54,9 @@ def solar_capacity_factor(weather, lat, lon):
         model="perez",
     )
 
+    # perez divides by diffuse light, so with the sun on the horizon and zero recorded light it returns 0/0
+    poa = poa.fillna(0)
+
     temp_cell = pvlib.temperature.noct_sam(
         poa_global=poa["poa_global"],
         temp_air=weather["temp_c"],

@@ -37,7 +37,7 @@ CAPTURE_BY_TECH = {"solar": SOLAR_CAPTURE_RATE, "wind": WIND_CAPTURE_RATE}
 @lru_cache(maxsize=None)
 def hourly_cf(technology, zone, year):
     cf = read_timeseries_csv(PROCESSED_DIR / technology / zone / f"{technology}_cf_{year}.csv")
-    return cf[f"{technology}_cf"].resample("h").mean().to_numpy()
+    return cf[f"{technology}_cf"].to_numpy()
 
 
 def annual_residual_mwh(technology, zone, contracted_mw, load):

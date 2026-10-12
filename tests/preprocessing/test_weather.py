@@ -6,7 +6,7 @@ from preprocessing.weather import aggregate_zone, validate_zone_weather
 
 
 def _clean_year_df():
-    index = pd.date_range("2021-01-01", periods=35_040, freq="15min")
+    index = pd.date_range("2021-01-01", periods=8_760, freq="h")
     return pd.DataFrame({
         "temp_c": 15.0,
         "ghi_wm2": 100.0,
