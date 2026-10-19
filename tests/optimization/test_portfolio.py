@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from optimization.portfolio import (
-    _cvar, candidate_npvs, efficient_frontier, optimize_portfolio, recommend, recommend_from_npvs, scenario_npv,
+    _cvar, candidate_npvs, optimize_portfolio, recommend, recommend_from_npvs, scenario_npv,
 )
 
 
@@ -93,11 +93,3 @@ def test_cvar_interpolates_a_fractional_tail():
     # alpha=0.5 on 3 scenarios -> worst 1.5 of 3, interpolates between the worst and 2nd worst
     npv = pd.Series([10, 20, 30])
     assert _cvar(npv, alpha=0.5) == pytest.approx(26.666, abs=0.001)
-
-
-def test_efficient_frontier_expected_cost_rises_and_cvar_falls_with_rho(nord_sud_npvs):
-    frontier = efficient_frontier(nord_sud_npvs, [0, 1, 3, 10])
-    assert len(frontier) == 4
-    assert frontier.index.name == "rho"
-    assert frontier["expected_cost"].is_monotonic_increasing
-    assert frontier["cvar"].is_monotonic_decreasing

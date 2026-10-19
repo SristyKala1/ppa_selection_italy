@@ -84,16 +84,6 @@ def optimize_portfolio(cost_npvs, rho=0, alpha=ALPHA, cvar_budget=None):
     return result
 
 
-def efficient_frontier(cost_npvs, rhos):
-    rows = {}
-    for rho in rhos:
-        r = optimize_portfolio(cost_npvs, rho)
-        rows[rho] = {**r["weights"], "expected_cost": r["expected_cost"], "cvar": r["cvar"]}
-    frontier = pd.DataFrame(rows).T
-    frontier.index.name = "rho"
-    return frontier
-
-
 def candidate_npvs(zone, archetype, annual_kwh, reference_zone=None,
                    has_wholesale_market_access=False):
     if zone not in ZONES:
@@ -119,10 +109,8 @@ def candidate_npvs(zone, archetype, annual_kwh, reference_zone=None,
                                            reference_zone=vppa_reference)
         for name in sorted(eligible & SIZED_TYPES):
             selected[f"{name}_{share:.0%}"] = matrices[name]
-        if share == 1.0:
-            for name in sorted(eligible - SIZED_TYPES):
-                selected[name] = matrices[name]
-            selected["spot_only"] = matrices["spot_only"]
+    # spot has no size, so it goes in once
+    selected["spot_only"] = matrices["spot_only"]
 
     return eligible, {name: scenario_npv(mat) for name, mat in selected.items()}
 
