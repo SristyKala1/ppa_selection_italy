@@ -1,20 +1,19 @@
 # PPA Selection Italy
 
-Master's Thesis Project
+Master's Thesis Project: *Selecting Renewable PPA Portfolios Under Cross-Zone Price Risk: A CVaR Framework for Italy's Post-PUN Electricity Market*
 
-Risk-aware CVaR portfolio optimization for selecting renewable Power Purchase Agreements (PPAs) for industrial electricity consumers in the Italian market. Given a factory's zone and load profile, recommends a weighted mix of PPA contract types under a user-chosen risk appetite.
+A CVaR portfolio optimizer that recommends renewable Power Purchase Agreements (PPAs) for Italian industrial electricity buyers. Given a buyer's zone, industry type, annual consumption, market access and an optional Virtual PPA reference zone, it recommends a mix of contracts, each sized as a share of the buyer's consumption, under a user-chosen tolerance for tail risk, and explains the choice in plain language.
 
 ## Features
 
-- ERA5 weather data pipeline (Copernicus CDS)
-- Solar PV and wind power modelling (pvlib, windpowerlib)
-- NGFS-sourced electricity price scenarios, zonal basis risk calibrated against real GME data
-- Eligibility screening and per-contract-type cost matrices (Pay-as-Produced, Baseload, Virtual PPA, Sleeved)
-- CVaR portfolio optimizer (Pyomo/HiGHS)
-- Plain-language explainability layer for the optimizer's recommendations
-- Streamlit dashboard
+- ERA5 hourly weather pipeline (Copernicus CDS time-series API), 1991–2023, all 7 GME bidding zones
+- Solar PV (pvlib, PVWatts chain with Perez transposition) and wind (windpowerlib, one real wind farm per zone) capacity factors
+- 4,950 price scenarios per zone: NGFS Phase 5 pathways, year-to-year price shocks calibrated on GME's 2005–2024 PUN history, a merit-order weather adjustment, and structural zone offsets from GSE zonal day-ahead prices (2021–2025)
+- Eligibility screening and cost matrices for pay-as-produced, sleeved, baseload and Virtual PPA (solar and wind) contracts, at six sizes from 10% to 100% of consumption; Virtual PPAs settle at KYOS capture rates
+- CVaR-constrained linear program (Pyomo/HiGHS): minimise expected cost subject to a CVaR budget set by the tail-risk tolerance
+- Plain-language explainability layer and a Streamlit dashboard
 
-Battery/storage sizing is not implemented yet, still an open scope decision.
+Battery storage (BESS) and continuous contract sizing are out of scope and left as future work.
 
 ## Getting started
 
@@ -22,11 +21,9 @@ Battery/storage sizing is not implemented yet, still an open scope decision.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-
-pytest tests/
 ```
 
-Running the data pipeline from scratch:
+Run the data pipeline once before the tests or the dashboard; most tests read from `data/processed/`, which is not in the repository:
 
 ```bash
 python src/ingestion/download_era5.py      # needs ~/.cdsapirc, Copernicus CDS credentials
@@ -36,5 +33,17 @@ python src/physics/solar.py
 python src/physics/wind.py
 python src/ingestion/download_ngfs.py      # guest access, no credentials needed
 
+pytest tests/
 streamlit run src/dashboard/app.py
+```
+
+## Thesis analyses
+
+`analysis/` holds the scripts behind the benchmark and sensitivity results in the thesis (Sections 9.4 and 9.5). They change model settings in memory only and leave `src/` untouched; each writes a CSV next to itself.
+
+```bash
+python analysis/benchmark_no_shocks.py   # final model on the 99 scenarios without price shocks
+python analysis/size_grid.py             # 5% and coarse contract size grids
+python analysis/cvar_settings.py         # CVaR confidence level and limit, budget vs. penalty form
+python analysis/shock_volatility.py      # calm shocks (σ = 0.19), Nord and Sicilia with and without VPPA
 ```

@@ -1,0 +1,31 @@
+form,setting,weights,expected_M,cvar_M
+budget,0.0,{'baseload_100%': 1.0},18.07,18.07
+budget,0.05,"{'baseload_100%': 0.557, 'vppa_wind_100%': 0.443}",17.62,18.32
+budget,0.1,"{'baseload_100%': 0.114, 'vppa_wind_100%': 0.886}",17.17,18.57
+budget,0.15,"{'pap_solar_30%': 0.051, 'vppa_wind_100%': 0.949}",17.03,18.82
+budget,0.2,"{'pap_solar_30%': 0.117, 'vppa_wind_100%': 0.883}",17.0,19.08
+budget,0.25,"{'pap_solar_30%': 0.18, 'vppa_wind_100%': 0.82}",16.97,19.33
+budget,0.3,"{'pap_solar_30%': 0.242, 'vppa_wind_100%': 0.758}",16.95,19.58
+budget,0.35,"{'pap_solar_30%': 0.302, 'vppa_wind_100%': 0.698}",16.92,19.83
+budget,0.4,"{'pap_solar_30%': 0.36, 'vppa_wind_100%': 0.64}",16.89,20.08
+budget,0.45,"{'pap_solar_30%': 0.417, 'vppa_wind_100%': 0.583}",16.87,20.34
+budget,0.5,"{'pap_solar_30%': 0.473, 'vppa_wind_100%': 0.527}",16.84,20.59
+budget,0.55,"{'pap_solar_30%': 0.529, 'vppa_wind_100%': 0.471}",16.82,20.84
+budget,0.6,"{'pap_solar_30%': 0.583, 'vppa_wind_100%': 0.417}",16.79,21.09
+budget,0.65,"{'pap_solar_30%': 0.637, 'vppa_wind_100%': 0.363}",16.77,21.34
+budget,0.7,"{'pap_solar_30%': 0.691, 'vppa_wind_100%': 0.309}",16.74,21.59
+budget,0.75,"{'pap_solar_30%': 0.744, 'vppa_wind_100%': 0.256}",16.72,21.85
+budget,0.8,"{'pap_solar_30%': 0.796, 'vppa_wind_100%': 0.204}",16.69,22.1
+budget,0.85,"{'pap_solar_30%': 0.847, 'vppa_wind_100%': 0.153}",16.67,22.35
+budget,0.9,"{'pap_solar_30%': 0.898, 'vppa_wind_100%': 0.102}",16.65,22.6
+budget,0.95,"{'pap_solar_30%': 0.949, 'vppa_wind_100%': 0.051}",16.62,22.85
+budget,1.0,{'pap_solar_30%': 1.0},16.6,23.11
+penalty,0.0,{'pap_solar_30%': 1.0},16.6,23.11
+penalty,0.1,"{'pap_solar_30%': 0.516, 'vppa_wind_100%': 0.484}",16.82,20.78
+penalty,0.25,{'vppa_wind_100%': 1.0},17.06,18.64
+penalty,0.5,{'vppa_wind_100%': 1.0},17.06,18.64
+penalty,1.0,{'vppa_wind_100%': 1.0},17.06,18.64
+penalty,2.0,{'baseload_100%': 1.0},18.07,18.07
+penalty,5.0,{'baseload_100%': 1.0},18.07,18.07
+penalty,10.0,{'baseload_100%': 1.0},18.07,18.07
+penalty,1000.0,{'baseload_100%': 1.0},18.07,18.07
