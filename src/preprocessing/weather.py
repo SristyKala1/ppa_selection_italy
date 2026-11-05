@@ -44,16 +44,40 @@ def validate_zone_weather(df, zone_name, start_year, end_year):
     if not df["pressure_pa"].between(70_000, 110_000).all():
         raise ValueError(f"{zone_name}: pressure outside plausible range (70,000-110,000 Pa)")
 
+    check_row_count(len(df), zone_name, start_year, end_year)
+
+
+def check_row_count(n_rows, name, start_year, end_year):
     num_years = end_year - start_year + 1
     num_leap = sum(1 for y in range(start_year, end_year + 1)
                     if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0))
     expected_rows = (num_years - num_leap) * 8_760 + num_leap * 8_784
     tolerance = 2 * num_years
 
-    if abs(len(df) - expected_rows) > tolerance:
+    if abs(n_rows - expected_rows) > tolerance:
         raise ValueError(
-            f"{zone_name}: row count {len(df)} outside tolerance of expected {expected_rows} (±{tolerance})"
+            f"{name}: row count {n_rows} outside tolerance of expected {expected_rows} (±{tolerance})"
         )
+
+
+# the wind-site files only need wind speed, so they get their own small path through this stage
+def process_wind_site(path):
+    ds = xr.open_dataset(path)
+    df = ds.to_dataframe().reset_index()
+
+    time_col = "valid_time" if "valid_time" in df.columns else "time"
+    df = df.set_index(time_col)
+
+    wind_speed = np.sqrt(df["u100"] ** 2 + df["v100"] ** 2)
+    wind_speed.index = wind_speed.index.tz_localize("UTC").tz_convert("Europe/Rome")
+    return wind_speed
+
+
+def validate_wind_site(wind_speed, name, start_year, end_year):
+    if wind_speed.isna().any():
+        raise ValueError(f"{name}: NaN values found in wind-site data")
+
+    check_row_count(len(wind_speed), name, start_year, end_year)
 
 
 def aggregate_zone(city_data, zone_name):

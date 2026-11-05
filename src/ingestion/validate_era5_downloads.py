@@ -49,6 +49,12 @@ if __name__ == "__main__":
             if result:
                 failures[f"{zone}/{city['name']}"] = result
 
+        site = zone_data["wind_site"]
+        path = RAW_WEATHER_DIR / f"era5_{zone}_wind_{site['name']}.nc"
+        result = check(path)
+        if result:
+            failures[f"{zone}/wind_{site['name']}"] = result
+
     if failures:
         for name, reason in failures.items():
             print(f"FAIL {name}: {reason}")
