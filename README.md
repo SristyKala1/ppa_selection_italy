@@ -1,7 +1,5 @@
 # PPA Selection Italy
 
-Master's Thesis Project: *Selecting Renewable PPA Portfolios Under Cross-Zone Price Risk: A CVaR Framework for Italy's Post-PUN Electricity Market*
-
 A CVaR portfolio optimizer that recommends renewable Power Purchase Agreements (PPAs) for Italian industrial electricity buyers. Given a buyer's zone, industry type, annual consumption, market access and an optional Virtual PPA reference zone, it recommends a mix of contracts, each sized as a share of the buyer's consumption, under a user-chosen tolerance for tail risk, and explains the choice in plain language.
 
 ## Features
@@ -37,9 +35,9 @@ pytest tests/
 streamlit run src/dashboard/app.py
 ```
 
-## Thesis analyses
+## Sensitivity analyses
 
-`analysis/` holds the scripts behind the benchmark and sensitivity results in the thesis (Sections 9.4 and 9.5). They change model settings in memory only and leave `src/` untouched; each writes a CSV next to itself.
+`analysis/` holds the scripts behind the benchmark and sensitivity results. They change model settings in memory only and leave `src/` untouched; each writes a CSV next to itself.
 
 ```bash
 python analysis/benchmark_no_shocks.py   # final model on the 99 scenarios without price shocks
