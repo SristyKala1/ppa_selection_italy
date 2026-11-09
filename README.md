@@ -2,6 +2,20 @@
 
 A CVaR portfolio optimizer that recommends renewable Power Purchase Agreements (PPAs) for Italian industrial electricity buyers. Given a buyer's zone, industry type, annual consumption, market access and an optional Virtual PPA reference zone, it recommends a mix of contracts, each sized as a share of the buyer's consumption, under a user-chosen tolerance for tail risk, and explains the choice in plain language.
 
+## Who it's for
+
+Energy and procurement managers at Italian industrial companies who are weighing renewable PPAs against staying on the spot market, and analysts or consultants who advise them. Since zonal prices replaced the national PUN for final customers, where a buyer sits matters, and the tool shows how much expected cost and tail risk each contract mix trades off for a given zone, load shape and risk tolerance.
+
+## Built with
+
+- Python 3.13
+- Weather and price data: ERA5 via `cdsapi`, NGFS scenarios via `pyam`, `xarray` and `netCDF4`
+- Physics: `pvlib` (solar) and `windpowerlib` (wind)
+- Data handling: `pandas`, `numpy`, `scipy`
+- Optimization: `pyomo` with the HiGHS solver (`highspy`)
+- Dashboard and charts: `streamlit`, `plotly`, `matplotlib`
+- Tests: `pytest`
+
 ## Features
 
 - ERA5 hourly weather pipeline (Copernicus CDS time-series API), 1991–2023, all 7 GME bidding zones
@@ -11,7 +25,7 @@ A CVaR portfolio optimizer that recommends renewable Power Purchase Agreements (
 - CVaR-constrained linear program (Pyomo/HiGHS): minimise expected cost subject to a CVaR budget set by the tail-risk tolerance
 - Plain-language explainability layer and a Streamlit dashboard
 
-Battery storage (BESS) and continuous contract sizing are out of scope and left as future work.
+Battery storage (BESS) and continuous contract sizing are not in the current model. See [ROADMAP.md](ROADMAP.md) for what is planned next.
 
 ## Getting started
 
