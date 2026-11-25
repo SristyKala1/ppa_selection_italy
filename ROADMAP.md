@@ -5,7 +5,7 @@ What I plan to add next, roughly in order. The first three are the current focus
 ## Next
 
 ### Battery storage next to solar PPAs
-Right now any solar output above the factory's load in a given hour is lost, which limits how large a solar contract is worth signing (the optimizer settles on about 30% of consumption in most cases). A battery could store that midday surplus and use it in the evening.
+Right now any solar output above the factory's load in a given hour is sold back at half the solar capture rate, because it falls in the hours when prices are lowest. That limits how large a solar contract is worth signing (without a Virtual PPA, the optimizer settles on about 30% of consumption). A battery could store that midday surplus and use it in the evening.
 
 - Simple charge/discharge rule on the hourly residual: charge from surplus, discharge when load exceeds generation
 - Battery described by energy capacity (MWh), power (MW) and round-trip efficiency
@@ -24,6 +24,7 @@ Download the recommended portfolio, the cost and risk figures and the rationale 
 ## Later
 
 - Editable assumptions in the dashboard: strike prices, counterparty spread, sleeving margin, discount rate
+- Virtual PPAs against several reference zones in one portfolio, so that contracts settled against zones whose prices move apart can diversify each other
 - Hourly price shapes, so the residual is bought at the price of the hours it falls in and batteries can do price arbitrage
 - Indexed strikes, floors and caps, and inflation
 - Single-axis tracking for solar

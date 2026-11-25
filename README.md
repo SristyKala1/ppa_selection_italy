@@ -20,8 +20,8 @@ Energy and procurement managers at Italian industrial companies who are weighing
 
 - ERA5 hourly weather pipeline (Copernicus CDS time-series API), 1991–2023, all 7 GME bidding zones
 - Solar PV (pvlib, PVWatts chain with Perez transposition) and wind (windpowerlib, one real wind farm per zone) capacity factors
-- 4,950 price scenarios per zone: NGFS Phase 5 pathways, year-to-year price shocks calibrated on GME's 2005–2024 PUN history, a merit-order weather adjustment, and structural zone offsets from GSE zonal day-ahead prices (2021–2025)
-- Eligibility screening and cost matrices for pay-as-produced, sleeved, baseload and Virtual PPA (solar and wind) contracts, at six sizes from 10% to 100% of consumption; Virtual PPAs settle at KYOS capture rates
+- 4,950 price scenarios per zone: NGFS Phase 5 pathways, year-to-year price shocks calibrated on GME's 2005–2024 PUN history (each zone's shock correlated with the national one at 0.99, fitted on GME zonal prices), a merit-order weather adjustment, and structural zone offsets from GSE zonal day-ahead prices (2021–2025)
+- Eligibility screening and cost matrices for pay-as-produced, sleeved, baseload and Virtual PPA (solar and wind) contracts, at six sizes from 10% to 100% of consumption; renewable energy is valued at KYOS capture rates (in the reference zone for Virtual PPAs, in the buyer's own zone for pay-as-produced and sleeved contracts, whose surplus above the load is credited at half that rate); baseload is struck at the expected price less 1%, plus a counterparty spread and a risk premium
 - CVaR-constrained linear program (Pyomo/HiGHS): minimise expected cost subject to a CVaR budget set by the tail-risk tolerance
 - Plain-language explainability layer and a Streamlit dashboard
 
@@ -58,4 +58,11 @@ python analysis/benchmark_no_shocks.py   # final model on the 99 scenarios witho
 python analysis/size_grid.py             # 5% and coarse contract size grids
 python analysis/cvar_settings.py         # CVaR confidence level and limit, budget vs. penalty form
 python analysis/shock_volatility.py      # calm shocks (σ = 0.19), Nord and Sicilia with and without VPPA
+python analysis/case_studies.py          # all case studies across the full tolerance range
+python analysis/sensitivities.py         # one-at-a-time tests: price level, capture rates, seed, strikes, margins, surplus
+python analysis/baseload_premium.py      # Baseload risk premium 0, 2.5, 5, 10, 15 €/MWh
+python analysis/fit_zone_correlation.py  # correlation of zone price shocks, fitted on GME zonal prices 2005-2024
+python analysis/zone_shock_correlation.py # Virtual PPA cases at zone correlations 1.0, 0.999, 0.99, 0.96
 ```
+
+`python analysis/run_chapter9.py` runs all of the result scripts above in one go, with whatever settings are in `src/`.
