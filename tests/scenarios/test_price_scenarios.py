@@ -1,4 +1,7 @@
+import numpy as np
 import pytest
+
+import scenarios.price_scenarios as ps
 
 from scenarios.price_scenarios import (
     ANCHOR_YEAR,
@@ -43,3 +46,20 @@ def test_zonal_price_matrix_shape_and_column_names():
     matrix = build_zonal_price_matrix("nord")
     assert matrix.shape == (15, len(SCENARIOS) * N_PRICE_PATHS * (END_YEAR - START_YEAR + 1))
     assert matrix.columns.names == ["price_scenario", "weather_year"]
+
+
+def test_full_correlation_gives_every_zone_the_same_national_shock(monkeypatch):
+    # correlation 1.0 is the model's original setting, one shock shared by all zones
+    monkeypatch.setattr(ps, "ZONE_SHOCK_CORRELATION", 1.0)
+    nord, sicilia = ps.price_shock_paths("nord"), ps.price_shock_paths("sicilia")
+    for key in nord:
+        assert np.allclose(nord[key], sicilia[key])
+
+
+def test_zone_shocks_have_the_set_correlation_and_keep_mean_one(monkeypatch):
+    monkeypatch.setattr(ps, "ZONE_SHOCK_CORRELATION", 0.9)
+    nord, sud = ps.price_shock_paths("nord"), ps.price_shock_paths("sud")
+    x = np.log(np.concatenate([nord[k].to_numpy() for k in nord]))
+    y = np.log(np.concatenate([sud[k].to_numpy() for k in sud]))
+    assert np.corrcoef(x, y)[0, 1] == pytest.approx(0.9, abs=0.03)
+    assert np.exp(x).mean() == pytest.approx(1.0, abs=0.05)

@@ -51,6 +51,8 @@ PRICE_SHOCK_PERSISTENCE = 0.52
 PRICE_SHOCK_VOLATILITY = 0.38
 N_PRICE_PATHS = 50
 PRICE_SHOCK_SEED = 42
+# correlation between two zones' price shocks; 1.0 = one national shock for all zones
+ZONE_SHOCK_CORRELATION = 0.99
 
 # deviation from cross-zone mean price, GSE zonal MGP data 2021-2025
 ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH = {
@@ -148,20 +150,30 @@ def zone_merit_order_adjustment(zone):
     return weather_driven + ZONE_STRUCTURAL_OFFSET_EUR_PER_MWH[zone]
 
 
-def price_shock_paths(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
-    # same seed every call, so every zone sees the same national shocks
+def price_shock_paths(zone=None, start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
+    # the national draws use the same seed every call, so every zone shares them; each zone
+    # mixes in its own draws so that two zones' shocks have ZONE_SHOCK_CORRELATION.
+    # at 1.0 every zone gets exactly the national shock
     rng = np.random.default_rng(PRICE_SHOCK_SEED)
+    own_seed = PRICE_SHOCK_SEED + 1 + (ZONES.index(zone) if zone else 0)
+    own_rng = np.random.default_rng(own_seed)
+    shared = np.sqrt(ZONE_SHOCK_CORRELATION)
+    own = np.sqrt(1 - ZONE_SHOCK_CORRELATION)
     years = range(start_year, start_year + term_years)
     phi, sigma = PRICE_SHOCK_PERSISTENCE, PRICE_SHOCK_VOLATILITY
     mean_correction = sigma**2 / (2 * (1 - phi**2))  # keeps each multiplier's mean at 1
+
+    def draw(sd):
+        return shared * rng.normal(0, sd) + own * own_rng.normal(0, sd)
+
     paths = {}
     for scenario in SCENARIOS:
         for k in range(N_PRICE_PATHS):
-            x = rng.normal(0, sigma / np.sqrt(1 - phi**2))
+            x = draw(sigma / np.sqrt(1 - phi**2))
             multipliers = []
             for _ in years:
                 multipliers.append(np.exp(x - mean_correction))
-                x = phi * x + rng.normal(0, sigma)
+                x = phi * x + draw(sigma)
             paths[(scenario, k)] = pd.Series(multipliers, index=list(years))
     return paths
 
@@ -170,7 +182,7 @@ def price_shock_paths(start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS)
 def build_zonal_price_matrix(zone, start_year=CONTRACT_START, term_years=CONTRACT_TERM_YEARS):
     end_year = start_year + term_years - 1
     adjustment = zone_merit_order_adjustment(zone)
-    shocks = price_shock_paths(start_year, term_years)
+    shocks = price_shock_paths(zone, start_year, term_years)
 
     columns = {}
     for scenario in SCENARIOS:
