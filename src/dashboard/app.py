@@ -16,7 +16,7 @@ from explainability.rationale import (
 )
 from scenarios.contracts import (
     COUNTERPARTY_SPREAD, HOURS_PER_YEAR, SLEEVING_MARGIN, STRIKE_PRICE_SOLAR, STRIKE_PRICE_WIND,
-    CAPTURE_BY_TECH, baseload_strike, mw_for_coverage,
+    SURPLUS_CAPTURE_FACTOR, CAPTURE_BY_TECH, baseload_strike, mw_for_coverage,
 )
 from scenarios.load_profile import ARCHETYPES
 from scenarios.price_scenarios import build_zonal_price_matrix
@@ -164,21 +164,27 @@ def distribution_chart(spot_npv, portfolio_npv):
     return style(fig, 460)
 
 
+def pap_settlement(tech, zone):
+    # energy used is worth the capture price, surplus is sold at a share of it
+    capture = CAPTURE_BY_TECH[tech][zone]
+    return f"Pay-as-produced, used × {capture:.2f} capture, surplus × {capture * SURPLUS_CAPTURE_FACTOR:.2f}"
+
+
 def contract_card(base, coverage, zone, annual_load_mwh, reference_zone):
     if base == "pap_solar":
         mw = mw_for_coverage("solar", zone, coverage, annual_load_mwh)
         rows = [("Delivery", f"Physical, {pretty(zone)}"), ("Strike", f"€{STRIKE_PRICE_SOLAR + COUNTERPARTY_SPREAD:.2f}/MWh"),
-                ("Settlement", "Pay-as-produced"), ("Capacity", f"{mw:.1f} MW solar")]
+                ("Settlement", pap_settlement("solar", zone)), ("Capacity", f"{mw:.1f} MW solar")]
     elif base == "pap_wind":
         mw = mw_for_coverage("wind", zone, coverage, annual_load_mwh)
         rows = [("Delivery", f"Physical, {pretty(zone)}"), ("Strike", f"€{STRIKE_PRICE_WIND + COUNTERPARTY_SPREAD:.2f}/MWh"),
-                ("Settlement", "Pay-as-produced"), ("Capacity", f"{mw:.1f} MW wind")]
+                ("Settlement", pap_settlement("wind", zone)), ("Capacity", f"{mw:.1f} MW wind")]
     elif base in ("sleeved", "sleeved_wind"):
         tech = "wind" if base == "sleeved_wind" else "solar"
         mw = mw_for_coverage(tech, zone, coverage, annual_load_mwh)
         strike = (STRIKE_PRICE_WIND if tech == "wind" else STRIKE_PRICE_SOLAR) + COUNTERPARTY_SPREAD + SLEEVING_MARGIN
         rows = [("Delivery", f"Physical via supplier, {pretty(zone)}"), ("Strike", f"€{strike:.2f}/MWh incl. sleeving"),
-                ("Settlement", "Pay-as-produced"), ("Capacity", f"{mw:.1f} MW {tech}")]
+                ("Settlement", pap_settlement(tech, zone)), ("Capacity", f"{mw:.1f} MW {tech}")]
     elif base == "baseload":
         strike = baseload_strike(build_zonal_price_matrix(zone))
         rows = [("Delivery", f"Physical, {pretty(zone)}"), ("Strike", f"€{strike:.2f}/MWh"),

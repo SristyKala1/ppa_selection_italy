@@ -1,8 +1,10 @@
 import re
 
 from optimization.portfolio import _cvar
+import scenarios.contracts as contracts
 from scenarios.contracts import (
-    CAPTURE_BY_TECH, HOURS_PER_YEAR, annual_residual_mwh, mw_for_coverage, zonal_basis_risk,
+    CAPTURE_BY_TECH, HOURS_PER_YEAR, annual_matched_and_surplus_mwh, annual_residual_mwh,
+    mw_for_coverage, zonal_basis_risk,
 )
 from scenarios.eligibility import MIN_SOLAR_CF, MIN_WIND_CF, MIN_BASELOAD_VOLUME_MWH
 from scenarios.load_profile import load_profile_for_archetype
@@ -97,12 +99,17 @@ def shape_and_basis_notes(result, zone, archetype, annual_kwh, reference_zone=No
             tech = TECH_BY_TYPE[base]
             mw = mw_for_coverage(tech, zone, share, annual_load_mwh)
             residual = annual_residual_mwh(tech, zone, mw, load)
+            _, surplus = annual_matched_and_surplus_mwh(tech, zone, mw, load)
             uncovered_pct = residual.mean() / annual_load_mwh
+            surplus_pct = surplus.mean() / (share * annual_load_mwh)
+            capture = CAPTURE_BY_TECH[tech][zone]
             notes.append(
                 f"{name}: {tech} generation leaves {uncovered_pct:.0%} of your load uncovered on "
-                f"average, hour by hour (bought back at spot), a shape mismatch cost, not just "
-                f"a total output shortfall, and it varies by weather year (std {residual.std()/annual_load_mwh:.1%} "
-                f"of annual load), which is part of why it carries scenario to scenario cost variance."
+                f"average, hour by hour (bought at spot), and it varies by weather year (std "
+                f"{residual.std()/annual_load_mwh:.1%} of annual load). The energy you use is worth "
+                f"{capture:.0%} of the average price, because {tech} produces in cheaper hours, and the "
+                f"{surplus_pct:.0%} of output above your load is sold back at "
+                f"{capture * contracts.SURPLUS_CAPTURE_FACTOR:.0%} of it."
             )
         elif base == "baseload":
             notes.append(

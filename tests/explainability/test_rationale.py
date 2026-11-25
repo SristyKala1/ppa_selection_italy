@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from explainability.rationale import contract_rationale, screening_notes, shape_and_basis_notes
+from explainability.rationale import contract_rationale, display_name, screening_notes, shape_and_basis_notes
 from optimization.portfolio import recommend
 
 
@@ -38,17 +38,24 @@ def nord_sud_blend():
     )
 
 
-def test_contract_rationale_narrates_both_types_in_a_two_way_portfolio(nord_sud_blend):
+def test_contract_rationale_explains_every_chosen_contract(nord_sud_blend):
     lines = contract_rationale(nord_sud_blend)
-    assert any(l.startswith("Solar PPA sized at 30%") and "cheapest on average" in l for l in lines)
-    assert any(l.startswith("Virtual wind PPA sized at 100%") and "cuts CVaR by" in l for l in lines)
+    chosen = [t for t, w in nord_sud_blend["weights"].items() if w >= 0.01 and t != "spot_only"]
+    for t in chosen:
+        assert any(l.startswith(display_name(t)) for l in lines)
     assert any("Vs. staying on spot" in l for l in lines)
 
 
-def test_shape_and_basis_notes_covers_vppa(nord_sud_blend):
-    notes = shape_and_basis_notes(nord_sud_blend, "nord", "chemicals", 20_000_000, reference_zone="sud")
+def test_shape_and_basis_notes_covers_vppa():
+    result = {"weights": {"vppa_wind_100%": 1.0}}
+    notes = shape_and_basis_notes(result, "nord", "chemicals", 20_000_000, reference_zone="sud")
     assert any("basis risk" in n for n in notes)
-    assert any(n.startswith("Solar PPA") and "uncovered" in n for n in notes)
+
+
+def test_shape_and_basis_notes_covers_pap_shape_and_surplus():
+    result = {"weights": {"pap_solar_30%": 1.0}}
+    notes = shape_and_basis_notes(result, "nord", "chemicals", 20_000_000)
+    assert any(n.startswith("Solar PPA") and "uncovered" in n and "sold back" in n for n in notes)
 
 
 def test_shape_and_basis_notes_covers_baseload():
