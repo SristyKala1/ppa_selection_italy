@@ -11,6 +11,7 @@ SCRIPTS = [
     "baseload_premium.py",
     "zone_shock_correlation.py",
     "shock_volatility.py",
+    "discount_rate.py",
     "size_grid.py",
     "cvar_settings.py",
     "benchmark_no_shocks.py",   # Section 9.5, Table 9.3
